@@ -28,9 +28,10 @@ jobs:
         run: |
           npm ci
 
-      - name: Add Android Platform & Sync
+      - name: Build Web Assets & Sync
         run: |
-          npx cap add android
+          npm run build
+          npx cap add android || true
           npx cap sync android
 
       - name: Setup Gradle

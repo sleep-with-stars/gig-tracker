@@ -1,8 +1,7 @@
 {
   "appId": "com.gigtracker.workhour",
   "appName": "工时记工助手",
-  "webDir": "dist",
-  "bundledWebRuntime": false,
+  "webDir": "www",
   "server": {
     "androidScheme": "https"
   },

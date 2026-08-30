@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>工时与收入记工 - 兼职零工助手</title>
+  
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#10b981" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="记工助手" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="manifest" href="manifest.json" />
+  
+  <!-- Tailwind CSS & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <link rel="stylesheet" href="styles.css?v=2" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              300: '#6ee7b7',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b'
+            },
+            accent: {
+              500: '#f59e0b',
+              600: '#d97706'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col select-none touch-manipulation">
+
+  <!-- Top App Header -->
+  <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 py-3 flex items-center justify-between shadow-sm">
+    <div class="flex items-center space-x-2.5">
+      <div class="w-9 h-9 rounded-xl overflow-hidden shadow-md shadow-pink-500/20 flex items-center justify-center bg-pink-100 border border-pink-200 flex-shrink-0">
+        <img src="icon-192.png?v=3" class="w-full h-full object-cover" alt="App Icon" />
+      </div>
+      <div>
+        <h1 class="text-base font-bold text-slate-800 leading-tight">工时记工助手</h1>
+        <p class="text-[11px] text-slate-500" id="headerCurrentDateText">2026年8月30日 星期日</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-1.5">
+      <button id="btnPwaInstall" class="hidden px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-semibold border border-brand-200 flex items-center space-x-1 animate-pulse">
+        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+        <span>安装App</span>
+      </button>
+      <div id="activePunchBadge" class="hidden px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 text-xs font-semibold border border-rose-200 flex items-center space-x-1">
+        <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+        <span id="activePunchTimerText">00:00:00</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container with bottom padding for Navigation Tab Bar -->
+  <main class="flex-1 max-w-md w-full mx-auto pb-24 px-3.5 pt-3 overflow-y-auto">
+
+    <!-- ==================== TAB 1: 今日打卡与记工 ==================== -->
+    <section id="tabToday" class="space-y-3.5 active-tab-section">
+      
+      <!-- Date Selector / Current Editing Day Card -->
+      <div class="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-sm flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="calendar" class="w-4 h-4 text-brand-600"></i>
+          <span class="text-xs font-medium text-slate-500">记录日期:</span>
+          <input type="date" id="inputRecordDate" class="font-semibold text-sm text-slate-800 bg-slate-100 rounded-lg px-2.5 py-1 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+        </div>
+        <button id="btnTodayQuickJump" class="text-xs text-brand-600 font-medium hover:underline bg-brand-50 px-2 py-1 rounded-md border border-brand-100">
+          回到今天
+        </button>
+      </div>
+
+      <!-- Real-time Timer & Punch Clock Hero Card -->
+      <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-brand-950 text-white rounded-3xl p-5 shadow-xl shadow-slate-900/10 relative overflow-hidden">
+        <!-- Background Ambient Glow -->
+        <div class="absolute -top-12 -right-12 w-40 h-40 bg-brand-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-10 -left-10 w-36 h-36 bg-teal-500/15 rounded-full blur-2xl pointer-events-none"></div>
+
+        <!-- Punch Status & Running Time -->
+        <div class="relative z-10 flex flex-col items-center text-center">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/10 backdrop-blur-md mb-2" id="heroStatusPill">
+            <span class="w-2 h-2 rounded-full bg-slate-400" id="heroStatusDot"></span>
+            <span id="heroStatusText">当前未上班</span>
+          </div>
+
+          <div class="text-4xl font-black tracking-tight font-mono text-white mb-1" id="heroTimerDisplay">
+            00:00:00
+          </div>
+          <div class="text-xs text-slate-400 mb-4" id="heroShiftInfo">
+            今日已累计工时: <span class="text-brand-300 font-bold text-sm" id="heroTotalHours">0.00</span> 小时
+          </div>
+
+          <!-- Large Punch Action Button -->
+          <div class="w-full flex items-center justify-center gap-3">
+            <button id="btnPunchAction" class="flex-1 py-3.5 px-6 rounded-2xl font-bold text-base shadow-lg transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 bg-gradient-to-r from-brand-500 to-emerald-400 hover:from-brand-600 hover:to-emerald-500 text-white shadow-brand-500/30">
+              <i data-lucide="play" class="w-5 h-5 fill-current"></i>
+              <span id="btnPunchActionText">开始上班打卡</span>
+            </button>
+            <button id="btnAddManualShift" class="px-3.5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-medium text-xs flex flex-col items-center justify-center gap-1 border border-white/10" title="手动添加工时">
+              <i data-lucide="plus-circle" class="w-4 h-4"></i>
+              <span>补录工时</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Today Multi-Shift Time Logs -->
+      <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <i data-lucide="clock" class="w-4 h-4 text-brand-600"></i>
+            <h3 class="text-sm font-bold text-slate-800">今日打卡段明细</h3>
+            <span class="text-[11px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded" id="shiftCountBadge">0段</span>
+          </div>
+          <span class="text-xs font-semibold text-brand-600">
+            合计: <span id="shiftsSummaryHours">0.00</span> h
+          </span>
+        </div>
+
+        <div id="shiftsListContainer" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+          <!-- Empty State or Shift Items -->
+          <div id="shiftsEmptyState" class="py-4 text-center text-xs text-slate-400 bg-slate-50/70 rounded-xl border border-dashed border-slate-200">
+            暂无打卡记录，点击上方按钮打卡或手动补录
+          </div>
+        </div>
+      </div>
+
+      <!-- Pricing Mode & Calculation Card -->
+      <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm space-y-3.5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <i data-lucide="coins" class="w-4 h-4 text-amber-500"></i>
+            <h3 class="text-sm font-bold text-slate-800">计费模式与工作量</h3>
+          </div>
+          <div class="flex items-center space-x-1">
+            <label class="text-[11px] text-slate-500">单日自定义</label>
+            <input type="checkbox" id="checkCustomDayMode" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+          </div>
+        </div>
+
+        <!-- Mode Segmented Selector -->
+        <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-100/90 rounded-xl text-xs font-semibold" id="modeSelectorGroup">
+          <button type="button" class="mode-btn py-2 rounded-lg text-center transition-all bg-white text-brand-700 shadow-sm" data-mode="PIECE">
+            计件模式
+          </button>
+          <button type="button" class="mode-btn py-2 rounded-lg text-center transition-all text-slate-600 hover:text-slate-900" data-mode="HOURLY">
+            时薪模式
+          </button>
+          <button type="button" class="mode-btn py-2 rounded-lg text-center transition-all text-slate-600 hover:text-slate-900" data-mode="HYBRID">
+            底薪+提成
+          </button>
+        </div>
+
+        <!-- Dynamic Inputs Based on Mode -->
+        <div id="modeInputsContainer" class="space-y-3 pt-1">
+          
+          <!-- Piece Mode Section -->
+          <div id="secPieceMode" class="space-y-2.5">
+            <div class="flex items-center justify-between text-xs text-slate-600">
+              <span>送单/计件量 (单)</span>
+              <span class="text-[11px] text-slate-400">单价: <span id="lblPieceRate" class="font-bold text-slate-700">¥5.00</span> /单</span>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <input type="number" id="inputOrderCount" min="0" step="1" value="0" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-lg font-bold text-slate-800 text-center focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+
+            <!-- Quick Increment / Decrement Buttons -->
+            <div class="grid grid-cols-5 gap-1.5 pt-0.5">
+              <button type="button" class="quick-order-btn bg-slate-100 active:bg-slate-200 text-slate-700 font-bold py-2 rounded-lg text-xs" data-delta="-1">-1</button>
+              <button type="button" class="quick-order-btn bg-emerald-50 active:bg-emerald-100 text-emerald-700 font-bold py-2 rounded-lg text-xs" data-delta="1">+1</button>
+              <button type="button" class="quick-order-btn bg-emerald-50 active:bg-emerald-100 text-emerald-700 font-bold py-2 rounded-lg text-xs" data-delta="5">+5</button>
+              <button type="button" class="quick-order-btn bg-emerald-50 active:bg-emerald-100 text-emerald-700 font-bold py-2 rounded-lg text-xs" data-delta="10">+10</button>
+              <button type="button" class="quick-order-btn bg-rose-50 active:bg-rose-100 text-rose-600 font-bold py-2 rounded-lg text-xs" data-delta="RESET">清零</button>
+            </div>
+          </div>
+
+          <!-- Hourly Mode Section -->
+          <div id="secHourlyMode" class="hidden space-y-2.5">
+            <div class="flex items-center justify-between text-xs text-slate-600">
+              <span>当前计算工时</span>
+              <span class="text-[11px] text-slate-400">时薪标准: <span id="lblHourlyRate" class="font-bold text-slate-700">¥25.00</span> /小时</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="number" id="inputDirectHours" min="0" step="0.05" value="0.00" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-base font-bold text-slate-800 text-center focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              <button type="button" id="btnSyncShiftsToDirectHours" class="px-3 py-2 bg-brand-50 text-brand-700 border border-brand-200 rounded-xl text-xs font-semibold active:scale-95 whitespace-nowrap">
+                从打卡同步
+              </button>
+            </div>
+          </div>
+
+          <!-- Hybrid Mode Section -->
+          <div id="secHybridMode" class="hidden space-y-2.5">
+            <div class="p-2.5 bg-amber-50/70 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
+              <div class="flex justify-between">
+                <span>基础时薪: <b id="lblHybridBaseRate">¥15.00</b>/h</span>
+                <span>计件提成: <b id="lblHybridPieceRate">¥3.00</b>/单</span>
+              </div>
+              <div class="text-[11px] text-amber-700">总工资 = (工时 × 基础时薪) + (送单量 × 提成单价)</div>
+            </div>
+          </div>
+
+          <!-- Custom Day Rate Override (Visible when Custom is checked) -->
+          <div id="secCustomRateOverride" class="hidden p-3 bg-slate-50 rounded-xl border border-dashed border-slate-300 space-y-2 text-xs">
+            <div class="font-semibold text-slate-700">今日专属计费标准修改:</div>
+            <div class="grid grid-cols-2 gap-2" id="overrideInputsGrid">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Adjustments & Notes Accordion/Group -->
+        <div class="pt-2 border-t border-slate-100 space-y-2.5">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[11px] font-medium text-slate-500 block mb-1">补贴/加赏 (元)</label>
+              <input type="number" id="inputAllowance" min="0" step="0.5" placeholder="如雨天补贴 ¥0" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:bg-white focus:ring-1 focus:ring-brand-500" />
+            </div>
+            <div>
+              <label class="text-[11px] font-medium text-slate-500 block mb-1">扣款/扣罚 (元)</label>
+              <input type="number" id="inputDeduction" min="0" step="0.5" placeholder="如罚款 ¥0" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:bg-white focus:ring-1 focus:ring-rose-500" />
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[11px] font-medium text-slate-500 block mb-1">备注说明</label>
+            <input type="text" id="inputNote" placeholder="例如：大暴雨单量爆满、晚班等" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:ring-1 focus:ring-brand-500" />
+          </div>
+        </div>
+
+        <!-- Today's Estimated Total Result Bar -->
+        <div class="bg-gradient-to-r from-brand-50 via-emerald-50 to-teal-50 rounded-2xl p-3.5 border border-brand-200/80 flex items-center justify-between">
+          <div>
+            <span class="text-xs font-semibold text-brand-900 block">今日预估总收入</span>
+            <span class="text-[11px] text-slate-500" id="lblIncomeFormula">送单 0单 × ¥5.00</span>
+          </div>
+          <div class="text-right">
+            <span class="text-2xl font-black text-brand-700 font-mono tracking-tight" id="lblTodayTotalIncome">¥0.00</span>
+          </div>
+        </div>
+
+        <!-- Save Button -->
+        <button id="btnSaveTodayRecord" class="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-98 text-white font-bold text-sm shadow-md shadow-brand-600/25 flex items-center justify-center gap-2">
+          <i data-lucide="save" class="w-4 h-4"></i>
+          <span>保存今日记工数据</span>
+        </button>
+      </div>
+
+    </section>
+
+    <!-- ==================== TAB 2: 月度日历与统计看板 ==================== -->
+    <section id="tabCalendar" class="space-y-3.5 hidden">
+      
+      <!-- Month Navigator -->
+      <div class="bg-white rounded-2xl p-3 border border-slate-200/90 shadow-sm flex items-center justify-between">
+        <button id="btnPrevMonth" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 active:scale-95">
+          <i data-lucide="chevron-left" class="w-5 h-5"></i>
+        </button>
+        <div class="text-center cursor-pointer" id="btnMonthPickerHeader">
+          <h2 class="text-base font-bold text-slate-800" id="currentCalendarMonthLabel">2026年 8月</h2>
+          <span class="text-[11px] text-brand-600 font-medium">点击返回当月</span>
+        </div>
+        <button id="btnNextMonth" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 active:scale-95">
+          <i data-lucide="chevron-right" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Calendar Grid Card -->
+      <div class="bg-white rounded-3xl p-3.5 border border-slate-200/90 shadow-sm space-y-2">
+        <!-- Weekday Headers -->
+        <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-400 py-1">
+          <span class="text-rose-500">日</span>
+          <span>一</span>
+          <span>二</span>
+          <span>三</span>
+          <span>四</span>
+          <span>五</span>
+          <span class="text-rose-500">六</span>
+        </div>
+
+        <!-- Days Grid -->
+        <div id="calendarGridDays" class="grid grid-cols-7 gap-1">
+          <!-- Dynamically Rendered Calendar Cells -->
+        </div>
+
+        <!-- Legend -->
+        <div class="flex items-center justify-center gap-4 pt-2 text-[11px] text-slate-500 border-t border-slate-100">
+          <div class="flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-brand-500"></span>
+            <span>有出工</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            <span>今日</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-slate-200"></span>
+            <span>无记录</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Monthly Aggregation Dashboard (Sticky / Prominent) -->
+      <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-brand-950 text-white rounded-3xl p-4 shadow-lg space-y-3">
+        <div class="flex items-center justify-between border-b border-white/10 pb-2">
+          <div class="flex items-center gap-1.5">
+            <i data-lucide="pie-chart" class="w-4 h-4 text-brand-400"></i>
+            <h3 class="text-xs font-bold text-slate-200" id="monthStatsTitle">2026年8月 累计总览</h3>
+          </div>
+          <span class="text-[11px] bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded-full font-mono font-semibold" id="monthWorkDaysBadge">
+            出工 0 天
+          </span>
+        </div>
+
+        <!-- Main Big Total Income -->
+        <div class="text-center py-1">
+          <span class="text-xs text-slate-400 font-medium block">本月预计总收入</span>
+          <span class="text-3xl font-black text-brand-400 font-mono tracking-tight" id="lblMonthTotalIncome">¥0.00</span>
+        </div>
+
+        <!-- 4 Sub-Metrics Grid -->
+        <div class="grid grid-cols-2 gap-2 pt-1 text-xs">
+          <div class="bg-white/5 rounded-2xl p-2.5 border border-white/5">
+            <span class="text-slate-400 text-[11px] block">总工时</span>
+            <span class="text-base font-bold font-mono text-white" id="lblMonthTotalHours">0.00 <span class="text-xs font-normal text-slate-400">h</span></span>
+          </div>
+          <div class="bg-white/5 rounded-2xl p-2.5 border border-white/5">
+            <span class="text-slate-400 text-[11px] block">总送单量</span>
+            <span class="text-base font-bold font-mono text-white" id="lblMonthTotalOrders">0 <span class="text-xs font-normal text-slate-400">单</span></span>
+          </div>
+          <div class="bg-white/5 rounded-2xl p-2.5 border border-white/5">
+            <span class="text-slate-400 text-[11px] block">平均时薪</span>
+            <span class="text-base font-bold font-mono text-emerald-300" id="lblMonthAvgHourly">¥0.00 <span class="text-[10px] font-normal text-slate-400">/h</span></span>
+          </div>
+          <div class="bg-white/5 rounded-2xl p-2.5 border border-white/5">
+            <span class="text-slate-400 text-[11px] block">日均收入</span>
+            <span class="text-base font-bold font-mono text-emerald-300" id="lblMonthAvgDaily">¥0.00 <span class="text-[10px] font-normal text-slate-400">/天</span></span>
+          </div>
+        </div>
+
+        <!-- Export Month Button -->
+        <button id="btnExportMonthCsv" class="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-98 text-xs font-semibold text-white flex items-center justify-center gap-1.5 border border-white/10 transition-all">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          <span>导出当前月份工时与收入报表 (CSV)</span>
+        </button>
+      </div>
+
+    </section>
+
+    <!-- ==================== TAB 3: 设置与计价标准 ==================== -->
+    <section id="tabSettings" class="space-y-3.5 hidden">
+      
+      <!-- Default Pricing Rules Config -->
+      <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm space-y-3.5">
+        <div class="flex items-center gap-1.5 border-b border-slate-100 pb-2.5">
+          <i data-lucide="sliders" class="w-4 h-4 text-brand-600"></i>
+          <h3 class="text-sm font-bold text-slate-800">全局默认计价标准</h3>
+        </div>
+
+        <!-- Global Default Mode -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-semibold text-slate-700">默认计价模式</label>
+          <select id="cfgDefaultMode" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-500">
+            <option value="PIECE">计件模式 (送外卖/按单结算)</option>
+            <option value="HOURLY">时薪模式 (小时工/钟点工)</option>
+            <option value="HYBRID">底薪+提成模式 (基础时薪+每单提成)</option>
+          </select>
+        </div>
+
+        <!-- Rate Inputs -->
+        <div class="space-y-2.5 pt-1">
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1">默认单价 (元/单，用于计件)</label>
+            <div class="relative">
+              <span class="absolute left-3 top-2 text-slate-400 text-xs">¥</span>
+              <input type="number" id="cfgPieceRate" min="0" step="0.1" value="5.0" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-7 pr-3 py-2 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-500" />
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs font-medium text-slate-600 block mb-1">默认时薪 (元/小时，用于时薪工)</label>
+            <div class="relative">
+              <span class="absolute left-3 top-2 text-slate-400 text-xs">¥</span>
+              <input type="number" id="cfgHourlyRate" min="0" step="0.5" value="25.0" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-7 pr-3 py-2 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-500" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs font-medium text-slate-600 block mb-1">混合模式-底薪时薪</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2 text-slate-400 text-xs">¥</span>
+                <input type="number" id="cfgHybridBaseRate" min="0" step="0.5" value="15.0" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-7 pr-3 py-2 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-500" />
+              </div>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-slate-600 block mb-1">混合模式-每单提成</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2 text-slate-400 text-xs">¥</span>
+                <input type="number" id="cfgHybridPieceRate" min="0" step="0.1" value="3.0" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-7 pr-3 py-2 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-500" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button id="btnSaveConfig" class="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-98 text-white font-bold text-xs shadow-sm shadow-brand-600/20">
+          保存默认标准
+        </button>
+      </div>
+
+      <!-- Data Backup & Persistence Management -->
+      <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm space-y-3">
+        <div class="flex items-center gap-1.5 border-b border-slate-100 pb-2.5">
+          <i data-lucide="database" class="w-4 h-4 text-indigo-600"></i>
+          <h3 class="text-sm font-bold text-slate-800">数据备份与管理</h3>
+        </div>
+
+        <p class="text-[11px] text-slate-500 leading-relaxed">
+          数据保存在手机本地 (LocalStorage / IndexedDB)，无须联网即可使用。建议定期导出备份防止手机清理丢失数据。
+        </p>
+
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button id="btnExportAllJson" class="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-95">
+            <i data-lucide="file-up" class="w-3.5 h-3.5 text-indigo-600"></i>
+            <span>备份数据(JSON)</span>
+          </button>
+          
+          <label class="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer">
+            <i data-lucide="file-down" class="w-3.5 h-3.5 text-brand-600"></i>
+            <span>恢复数据(JSON)</span>
+            <input type="file" id="inputFileImportJson" accept=".json" class="hidden" />
+          </label>
+        </div>
+
+        <button id="btnExportFullCsv" class="w-full py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs flex items-center justify-center gap-1.5 border border-indigo-200 active:scale-95">
+          <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+          <span>导出全部历史记工数据 (Excel / CSV)</span>
+        </button>
+
+        <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+          <button id="btnLoadDemoData" class="text-xs text-brand-600 font-medium hover:underline">
+            填入示例演示数据
+          </button>
+          <button id="btnClearAllData" class="text-xs text-rose-500 font-medium hover:underline">
+            清空所有数据
+          </button>
+        </div>
+      </div>
+
+      <!-- App Info & PWA / APK Info -->
+      <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm space-y-2 text-xs text-slate-500">
+        <div class="flex items-center justify-between text-slate-700 font-semibold">
+          <span>兼职记工助手 v1.0.0</span>
+          <span class="text-[10px] bg-brand-100 text-brand-800 px-2 py-0.5 rounded-full">Mobile PWA Ready</span>
+        </div>
+        <p class="text-[11px] leading-relaxed">
+          离线可用 • 支持多时段打卡 • 零工兼职专属 • 本地隐私安全
+        </p>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ==================== BOTTOM TAB NAVIGATION ==================== -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-4 py-1.5 shadow-lg max-w-md mx-auto">
+    <div class="grid grid-cols-3 gap-1">
+      <button class="nav-tab-btn active flex flex-col items-center justify-center py-1 rounded-xl text-brand-600 transition-colors" data-target="tabToday">
+        <i data-lucide="clock" class="w-5 h-5 mb-0.5"></i>
+        <span class="text-[11px] font-semibold">今日打卡</span>
+      </button>
+
+      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 rounded-xl text-slate-400 hover:text-slate-700 transition-colors" data-target="tabCalendar">
+        <i data-lucide="calendar-days" class="w-5 h-5 mb-0.5"></i>
+        <span class="text-[11px] font-semibold">月度日历</span>
+      </button>
+
+      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 rounded-xl text-slate-400 hover:text-slate-700 transition-colors" data-target="tabSettings">
+        <i data-lucide="settings" class="w-5 h-5 mb-0.5"></i>
+        <span class="text-[11px] font-semibold">设置标准</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ==================== MODAL: 手动添加/补录工时段 ==================== -->
+  <div id="modalShiftEdit" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden opacity-0 transition-opacity duration-200">
+    <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl transform translate-y-full sm:translate-y-0 transition-transform duration-200">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="clock-4" class="w-5 h-5 text-brand-600"></i>
+          <h3 class="text-base font-bold text-slate-800" id="modalShiftTitle">添加工时段</h3>
+        </div>
+        <button id="btnCloseShiftModal" class="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="font-medium text-slate-600 block mb-1">开始时间</label>
+            <input type="time" id="modalShiftStartTime" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-500" value="09:00" />
+          </div>
+          <div>
+            <label class="font-medium text-slate-600 block mb-1">结束时间</label>
+            <input type="time" id="modalShiftEndTime" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-500" value="12:30" />
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <span class="text-slate-600">计算工时时长:</span>
+          <span class="text-base font-black text-brand-600 font-mono" id="modalShiftDurationText">3.50 小时</span>
+        </div>
+
+        <div>
+          <label class="font-medium text-slate-600 block mb-1">或直接指定工时 (小时)</label>
+          <input type="number" id="modalShiftDirectHours" min="0" step="0.1" placeholder="留空按起止时间自动算" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-500" />
+        </div>
+
+        <div>
+          <label class="font-medium text-slate-600 block mb-1">时段备注 (可选)</label>
+          <input type="text" id="modalShiftLabel" placeholder="如：上午早高峰、下午跑单等" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-500" />
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button id="btnDeleteCurrentShift" class="hidden px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs border border-rose-200 active:scale-95">
+          删除
+        </button>
+        <button id="btnSaveShiftEntry" class="flex-1 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-98 text-white font-bold text-xs shadow-md shadow-brand-600/25">
+          保存此时段
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DRAWER/MODAL: 日历点击日期详情与快捷修改 ==================== -->
+  <div id="modalDayDetail" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden opacity-0 transition-opacity duration-200">
+    <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto transform translate-y-full sm:translate-y-0 transition-transform duration-200">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div>
+          <h3 class="text-base font-bold text-slate-800" id="dayDetailTitle">2026年8月30日 记工详情</h3>
+          <span class="text-xs text-slate-500" id="dayDetailSubtitle">星期日</span>
+        </div>
+        <button id="btnCloseDayDetailModal" class="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Summary Stats in Modal -->
+      <div class="grid grid-cols-3 gap-2 text-center">
+        <div class="p-2.5 rounded-2xl bg-brand-50 border border-brand-100">
+          <span class="text-[10px] text-brand-700 block">收入结算</span>
+          <span class="text-base font-black font-mono text-brand-700" id="dayDetailIncome">¥0.00</span>
+        </div>
+        <div class="p-2.5 rounded-2xl bg-slate-50 border border-slate-200">
+          <span class="text-[10px] text-slate-500 block">总工时</span>
+          <span class="text-base font-bold font-mono text-slate-800" id="dayDetailHours">0.00h</span>
+        </div>
+        <div class="p-2.5 rounded-2xl bg-slate-50 border border-slate-200">
+          <span class="text-[10px] text-slate-500 block">计件量</span>
+          <span class="text-base font-bold font-mono text-slate-800" id="dayDetailOrders">0单</span>
+        </div>
+      </div>
+
+      <!-- Detailed Shift Breakdown -->
+      <div class="space-y-2">
+        <h4 class="text-xs font-bold text-slate-700 flex items-center gap-1">
+          <i data-lucide="list" class="w-3.5 h-3.5 text-brand-600"></i>
+          <span>当天打卡时段:</span>
+        </h4>
+        <div id="dayDetailShiftsList" class="space-y-1.5 text-xs">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+
+      <!-- Additional Info -->
+      <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-1 text-slate-600" id="dayDetailMetaBox">
+        <!-- Mode, Allowance, Deduction, Notes -->
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex gap-2 pt-2">
+        <button id="btnEditDayInHomeTab" class="flex-1 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-98 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5">
+          <i data-lucide="edit" class="w-3.5 h-3.5"></i>
+          <span>载入首页编辑此日</span>
+        </button>
+        <button id="btnDeleteDayRecord" class="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs border border-rose-200 active:scale-95 flex items-center gap-1">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          <span>删除此日</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col items-center gap-2 max-w-xs w-full px-4"></div>
+
+  <!-- Application Logic Scripts -->
+  <script src="app.js?v=2"></script>
+</body>
+</html>

@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "专为兼职/零工设计的工时与收入记工 APP",
   "scripts": {
-    "cap:sync": "cap sync",
+    "build": "node -e \"const fs=require('fs'); fs.mkdirSync('www',{recursive:true}); ['index.html','app.js','styles.css','manifest.json','icon-192.png','icon-512.png','sw.js'].forEach(f=>{if(fs.existsSync(f)) fs.copyFileSync(f,'www/'+f)}); console.log('Assets synced to www/');\"",
+    "cap:sync": "npm run build && cap sync",
     "cap:open": "cap open android"
   },
   "dependencies": {
