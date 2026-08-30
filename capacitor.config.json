@@ -1,0 +1,13 @@
+{
+  "appId": "com.gigtracker.workhour",
+  "appName": "工时记工助手",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#10b981",
+    "allowMixedContent": true
+  }
+}
