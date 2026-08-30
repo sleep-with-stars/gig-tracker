@@ -1,0 +1,14 @@
+{
+  "name": "gig-tracker",
+  "version": "1.0.0",
+  "description": "专为兼职/零工设计的工时与收入记工 APP",
+  "scripts": {
+    "cap:sync": "cap sync",
+    "cap:open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  }
+}
