@@ -6,7 +6,8 @@
 const STORAGE_KEYS = {
   SETTINGS: 'gig_tracker_settings_v1',
   RECORDS: 'gig_tracker_records_v1',
-  ACTIVE_PUNCH: 'gig_tracker_active_punch_v1'
+  ACTIVE_PUNCH: 'gig_tracker_active_punch_v1',
+  CUSTOM_ICON: 'gig_tracker_custom_icon_v1'
 };
 
 const DEFAULT_SETTINGS = {
@@ -978,7 +979,205 @@ function generateDemoData() {
   loadRecordForCurrentDate();
 }
 
-// ==================== 11. 设置面板数据绑定 ====================
+// ==================== 11. 图标与头像个性化定制管理 ====================
+const PRESET_ICONS = [
+  {
+    id: 'preset_rider',
+    name: '外卖骑士',
+    bgColor: '#0284c7',
+    emoji: '🛵'
+  },
+  {
+    id: 'preset_gold',
+    name: '招财金币',
+    bgColor: '#d97706',
+    emoji: '💰'
+  },
+  {
+    id: 'preset_clock',
+    name: '工时沙漏',
+    bgColor: '#7c3aed',
+    emoji: '⏱️'
+  },
+  {
+    id: 'preset_cat',
+    name: '幸运招财猫',
+    bgColor: '#db2777',
+    emoji: '🐱'
+  },
+  {
+    id: 'preset_anime',
+    name: '二次元萌系',
+    bgColor: '#ec4899',
+    emoji: '🌸'
+  }
+];
+
+class IconManager {
+  static getCustomIcon() {
+    return localStorage.getItem(STORAGE_KEYS.CUSTOM_ICON) || null;
+  }
+
+  static saveCustomIcon(dataUrl) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.CUSTOM_ICON, dataUrl);
+      this.applyIconToDOM(dataUrl);
+      return true;
+    } catch (e) {
+      console.error('Save icon error', e);
+      return false;
+    }
+  }
+
+  static resetToDefault() {
+    localStorage.removeItem(STORAGE_KEYS.CUSTOM_ICON);
+    this.applyIconToDOM(null);
+  }
+
+  static applyIconToDOM(dataUrl) {
+    const headerImg = document.getElementById('headerCustomIconImg');
+    const headerDefault = document.getElementById('headerDefaultIcon');
+    const settingsImg = document.getElementById('settingsCustomIconImg');
+    const settingsDefault = document.getElementById('settingsDefaultIcon');
+
+    if (dataUrl) {
+      if (headerImg) {
+        headerImg.src = dataUrl;
+        headerImg.classList.remove('hidden');
+      }
+      if (headerDefault) headerDefault.classList.add('hidden');
+
+      if (settingsImg) {
+        settingsImg.src = dataUrl;
+        settingsImg.classList.remove('hidden');
+      }
+      if (settingsDefault) settingsDefault.classList.add('hidden');
+
+      // 动态更新页面 favicon 与 apple-touch-icon
+      let fav = document.querySelector('link[rel="icon"]');
+      if (fav) fav.href = dataUrl;
+      let appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
+      if (appleIcon) appleIcon.href = dataUrl;
+    } else {
+      if (headerImg) headerImg.classList.add('hidden');
+      if (headerDefault) headerDefault.classList.remove('hidden');
+
+      if (settingsImg) settingsImg.classList.add('hidden');
+      if (settingsDefault) settingsDefault.classList.remove('hidden');
+
+      let fav = document.querySelector('link[rel="icon"]');
+      if (fav) fav.href = 'icon.svg';
+      let appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
+      if (appleIcon) appleIcon.href = 'icon-192.png';
+    }
+  }
+
+  static async processImageFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // 在 512x512 canvas 上居中裁剪为正方形高清图标
+          const canvas = document.createElement('canvas');
+          canvas.width = 512;
+          canvas.height = 512;
+          const ctx = canvas.getContext('2d');
+
+          // 圆角裁切
+          const size = Math.min(img.width, img.height);
+          const sx = (img.width - size) / 2;
+          const sy = (img.height - size) / 2;
+
+          ctx.drawImage(img, sx, sy, size, size, 0, 0, 512, 512);
+          const dataUrl = canvas.toDataURL('image/png', 0.92);
+          resolve(dataUrl);
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  static createPresetDataUrl(preset) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // 渐变底色
+    ctx.fillStyle = preset.bgColor;
+    ctx.beginPath();
+    ctx.arc(256, 256, 256, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 绘制 Emoji
+    ctx.font = '240px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(preset.emoji, 256, 270);
+
+    return canvas.toDataURL('image/png');
+  }
+
+  static renderPresetGrid() {
+    const container = document.getElementById('presetIconGrid');
+    if (!container) return;
+
+    container.innerHTML = PRESET_ICONS.map(p => `
+      <button type="button" class="btn-select-preset flex flex-col items-center gap-1 p-1.5 rounded-xl border border-slate-200 hover:border-brand-500 bg-slate-50 active:scale-95 transition-all" data-id="${p.id}">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-lg shadow-sm" style="background-color: ${p.bgColor}; color: white;">
+          ${p.emoji}
+        </div>
+        <span class="text-[10px] font-medium text-slate-600 truncate w-full text-center">${p.name}</span>
+      </button>
+    `).join('');
+
+    container.querySelectorAll('.btn-select-preset').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.dataset.id;
+        const preset = PRESET_ICONS.find(item => item.id === id);
+        if (preset) {
+          const dataUrl = IconManager.createPresetDataUrl(preset);
+          IconManager.saveCustomIcon(dataUrl);
+          showToast(`已更换图标为: ${preset.name}`, 'success');
+        }
+      };
+    });
+  }
+
+  static downloadIconPack() {
+    const currentIcon = this.getCustomIcon();
+    const img = new Image();
+    img.onload = () => {
+      // 导出 512x512
+      const canvas512 = document.createElement('canvas');
+      canvas512.width = 512;
+      canvas512.height = 512;
+      canvas512.getContext('2d').drawImage(img, 0, 0, 512, 512);
+      canvas512.toBlob(blob => {
+        downloadBlob(blob, 'icon-512.png');
+      });
+
+      // 导出 192x192
+      setTimeout(() => {
+        const canvas192 = document.createElement('canvas');
+        canvas192.width = 192;
+        canvas192.height = 192;
+        canvas192.getContext('2d').drawImage(img, 0, 0, 192, 192);
+        canvas192.toBlob(blob => {
+          downloadBlob(blob, 'icon-192.png');
+          showToast('已导出 512 与 192 尺寸的图标 PNG 文件！', 'success');
+        });
+      }, 300);
+    };
+    img.src = currentIcon || 'icon-512.png';
+  }
+}
+
+// ==================== 12. 设置面板数据绑定 ====================
 function loadSettingsUI() {
   const s = state.settings;
   document.getElementById('cfgDefaultMode').value = s.defaultMode || 'PIECE';
@@ -986,6 +1185,9 @@ function loadSettingsUI() {
   document.getElementById('cfgHourlyRate').value = s.hourlyRate || 25.0;
   document.getElementById('cfgHybridBaseRate').value = s.hybridBaseRate || 15.0;
   document.getElementById('cfgHybridPieceRate').value = s.hybridPieceRate || 3.0;
+
+  IconManager.applyIconToDOM(IconManager.getCustomIcon());
+  IconManager.renderPresetGrid();
 }
 
 // ==================== 12. 事件绑定与初始化 ====================
@@ -1237,10 +1439,59 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCalendar();
   };
 
-  // 初始化加载当前数据
+  // 12. 图标定制上传与导出事件
+  const handleUploadIcon = async (file) => {
+    if (!file) return;
+    try {
+      showToast('正在处理并裁剪图片...', 'info');
+      const dataUrl = await IconManager.processImageFile(file);
+      IconManager.saveCustomIcon(dataUrl);
+      showToast('App 图标与头像更换成功！', 'success');
+    } catch (err) {
+      showToast('图片读取失败，请重试', 'error');
+    }
+  };
+
+  const inputIcon1 = document.getElementById('inputUploadCustomIcon');
+  if (inputIcon1) {
+    inputIcon1.onchange = (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handleUploadIcon(e.target.files[0]);
+        e.target.value = '';
+      }
+    };
+  }
+
+  const inputIcon2 = document.getElementById('inputUploadCustomIconBtn');
+  if (inputIcon2) {
+    inputIcon2.onchange = (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handleUploadIcon(e.target.files[0]);
+        e.target.value = '';
+      }
+    };
+  }
+
+  const btnResetIcon = document.getElementById('btnResetAppIcon');
+  if (btnResetIcon) {
+    btnResetIcon.onclick = () => {
+      IconManager.resetToDefault();
+      showToast('已恢复为默认图标', 'info');
+    };
+  }
+
+  const btnDownloadPack = document.getElementById('btnDownloadIconPack');
+  if (btnDownloadPack) {
+    btnDownloadPack.onclick = () => {
+      IconManager.downloadIconPack();
+    };
+  }
+
+  // 初始化加载当前数据与图标
   loadRecordForCurrentDate();
   renderCalendar();
   loadSettingsUI();
+  IconManager.applyIconToDOM(IconManager.getCustomIcon());
 });
 
 // ==================== 13. PWA 安装与 Service Worker 注册 ====================
